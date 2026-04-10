@@ -21,6 +21,18 @@ You are player 0. Actions:
 - `fold` or `f`
 - `q` to quit
 
+## Train an RL Agent (REINFORCE)
+
+```bash
+python3 train_reinforce_kuhn.py --episodes 150000 --save models/kuhn_reinforce_policy.json
+```
+
+Then play against the trained policy:
+
+```bash
+python3 play_kuhn.py --policy models/kuhn_reinforce_policy.json
+```
+
 ## Example
 
 ```python
