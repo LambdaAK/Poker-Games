@@ -1,6 +1,9 @@
 # Poker Games
 
-First implemented game: a minimal Kuhn Poker environment in Python.
+Implemented games:
+- Kuhn Poker
+- Leduc Poker (two rounds, board card, fixed-limit betting with one raise per round)
+- Heads-up Limit Texas Hold'em
 
 ## Quickstart
 
@@ -21,6 +24,34 @@ You are player 0. Actions:
 - `fold` or `f`
 - `q` to quit
 
+Play Leduc:
+
+```bash
+python3 play_leduc.py
+```
+
+Leduc actions:
+- `check` or `k`
+- `bet` or `b`
+- `call` or `c`
+- `raise` or `r`
+- `fold` or `f`
+- `q` to quit
+
+Play Limit Hold'em:
+
+```bash
+python3 play_holdem.py
+```
+
+Hold'em actions:
+- `check` or `k`
+- `bet` or `b`
+- `call` or `c`
+- `raise` or `r`
+- `fold` or `f`
+- `q` to quit
+
 ## Train an RL Agent (REINFORCE)
 
 ```bash
@@ -31,6 +62,60 @@ Then play against the trained policy:
 
 ```bash
 python3 play_kuhn.py --policy models/kuhn_reinforce_policy.json
+```
+
+## Leduc Baselines
+
+Train CFR (strong strategy baseline):
+
+```bash
+python3 train_cfr_leduc.py --iterations 4000 --save models/leduc_cfr_policy.json
+```
+
+Train REINFORCE (RL baseline):
+
+```bash
+python3 train_reinforce_leduc.py --episodes 400000 --save models/leduc_reinforce_policy.json
+```
+
+Play against trained bots:
+
+```bash
+python3 play_leduc.py --cfr-policy models/leduc_cfr_policy.json
+python3 play_leduc.py --rl-policy models/leduc_reinforce_policy.json
+```
+
+## Hold'em Baselines
+
+Train CFR baseline:
+
+```bash
+python3 train_cfr_holdem.py --iterations 5000 --save models/holdem_limit_cfr_policy.json
+```
+
+Train REINFORCE baseline:
+
+```bash
+python3 train_reinforce_holdem.py --episodes 250000 --save models/holdem_limit_reinforce_policy.json
+```
+
+Play against trained Hold'em bots:
+
+```bash
+python3 play_holdem.py --cfr-policy models/holdem_limit_cfr_policy.json
+python3 play_holdem.py --rl-policy models/holdem_limit_reinforce_policy.json
+```
+
+If your terminal does not render ANSI nicely:
+
+```bash
+python3 play_holdem.py --no-color --no-clear
+```
+
+If your terminal does not render ANSI nicely:
+
+```bash
+python3 play_leduc.py --no-color --no-clear
 ```
 
 ## Example
