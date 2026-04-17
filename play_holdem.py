@@ -6,11 +6,10 @@ import argparse
 import random
 import sys
 import time
-from typing import Callable
 
 from holdem_limit.abstraction import info_state_key
 from holdem_limit.cfr import AverageStrategyPolicy
-from holdem_limit.game import Action, HoldemLimitGame, card_label
+from holdem_limit.game import Action, BET_SIZES, HoldemLimitGame, card_label
 from holdem_limit.rl import TabularSoftmaxPolicy
 
 
@@ -54,6 +53,7 @@ ACTION_KEYS = {
     Action.FOLD: "f",
 }
 QUIT_WORDS = {"q", "quit", "exit"}
+ACTION_ORDER = (Action.CHECK, Action.BET, Action.CALL, Action.RAISE, Action.FOLD)
 
 
 def parse_args() -> argparse.Namespace:
@@ -85,20 +85,81 @@ def render_board(board) -> str:
     return " ".join(slots)
 
 
-def legal_line(legal: tuple[Action, ...], style: Style) -> str:
-    pieces: list[str] = []
-    for action in legal:
-        label = f"[{ACTION_KEYS[action]}] {action.value}"
+def action_cost(state, action: Action) -> int:
+    if action == Action.CALL:
+        return state.to_call
+    if action == Action.BET:
+        return BET_SIZES[state.round_index]
+    if action == Action.RAISE:
+        return state.to_call + BET_SIZES[state.round_index]
+    return 0
+
+
+def action_label(state, action: Action) -> str:
+    if action == Action.CHECK:
+        return "Check"
+    if action == Action.FOLD:
+        return "Fold"
+    cost = action_cost(state, action)
+    if action == Action.CALL:
+        return f"Call +{cost}"
+    if action == Action.BET:
+        return f"Bet +{cost}"
+    if action == Action.RAISE:
+        return f"Raise +{cost}"
+    return action.value.title()
+
+
+def legal_lines(state, legal: tuple[Action, ...], style: Style) -> list[str]:
+    lines: list[str] = []
+    legal_in_order = [action for action in ACTION_ORDER if action in legal]
+    for idx, action in enumerate(legal_in_order, start=1):
+        token = f"[{idx}] {action_label(state, action)} ({ACTION_KEYS[action]})"
         if action in (Action.BET, Action.RAISE):
-            pieces.append(style.paint(label, Style.YELLOW, Style.BOLD))
+            lines.append(style.paint(token, Style.YELLOW, Style.BOLD))
         elif action == Action.FOLD:
-            pieces.append(style.paint(label, Style.RED))
+            lines.append(style.paint(token, Style.RED))
         elif action == Action.CALL:
-            pieces.append(style.paint(label, Style.GREEN))
+            lines.append(style.paint(token, Style.GREEN))
         else:
-            pieces.append(style.paint(label, Style.CYAN))
-    pieces.append(style.paint("[q] quit", Style.DIM))
-    return "  ".join(pieces)
+            lines.append(style.paint(token, Style.CYAN))
+    lines.append(style.paint("[q] quit", Style.DIM))
+    return lines
+
+
+def resolve_action_input(raw: str, legal: tuple[Action, ...]) -> Action | None:
+    text = raw.strip().lower()
+    if not text:
+        return None
+    if text in QUIT_WORDS:
+        raise KeyboardInterrupt
+
+    legal_in_order = [action for action in ACTION_ORDER if action in legal]
+    if text.isdigit():
+        idx = int(text)
+        if 1 <= idx <= len(legal_in_order):
+            return legal_in_order[idx - 1]
+
+    mapped = ACTION_ALIASES.get(text)
+    if mapped in legal:
+        return mapped
+    return None
+
+
+def describe_to_call(to_call: int) -> str:
+    if to_call <= 0:
+        return "No bet to call."
+    if to_call == 1:
+        return "You need 1 chip to call."
+    return f"You need {to_call} chips to call."
+
+
+def format_action_log(events: list[str], max_lines: int = 6) -> list[str]:
+    if not events:
+        return ["No actions yet."]
+    if len(events) <= max_lines:
+        return events
+    return ["..."] + events[-(max_lines - 1) :]
 
 
 def select_bot_action(
@@ -138,7 +199,8 @@ def play_hand(
 ) -> tuple[int, bool]:
     state = game.reset()
     hero_cards = f"{card_label(state.player_hands[0][0])} {card_label(state.player_hands[0][1])}"
-    status = style.paint("New hand.", Style.CYAN)
+    status = style.paint("New hand. You are small blind.", Style.CYAN)
+    action_events: list[str] = ["Blinds posted: You 1, Bot 2."]
 
     while True:
         legal = game.legal_actions()
@@ -156,13 +218,18 @@ def play_hand(
                 f"Pot: {style.paint(str(state.pot), Style.BOLD)}    "
                 f"To call: {style.paint(str(state.to_call), Style.BOLD)}"
             )
-            print(style.paint(f"History: {game.history_label()}", Style.DIM))
+            print(style.paint(describe_to_call(state.to_call), Style.DIM))
+            print(style.paint("-" * 64, Style.DIM))
+            print(style.paint("Recent actions:", Style.BOLD))
+            for event in format_action_log(action_events):
+                print(style.paint(f"- {event}", Style.DIM))
             print(style.paint("-" * 64, Style.DIM))
             print(status)
             if error:
                 print(style.paint(error, Style.RED))
             if state.current_player == 0:
-                print(legal_line(legal, style))
+                for line in legal_lines(state, legal, style):
+                    print(line)
                 print(style.paint("Action >", Style.BOLD), end=" ")
             else:
                 print(style.paint("Bot is acting...", Style.MAGENTA))
@@ -171,14 +238,15 @@ def play_hand(
             error = None
             while True:
                 draw(error)
-                raw = input().strip().lower()
-                if raw in QUIT_WORDS:
-                    raise KeyboardInterrupt
-                action = ACTION_ALIASES.get(raw)
-                if action in legal:
+                raw = input()
+                resolved = resolve_action_input(raw, legal)
+                if resolved is not None:
+                    action = resolved
                     break
-                error = f"Invalid action. Legal: {', '.join(a.value for a in legal)}"
-            status = style.paint(f"You chose {action.value}.", Style.CYAN)
+                legal_names = ", ".join(action.value for action in legal)
+                error = f"Invalid action. Choose number/key for: {legal_names}"
+            status = style.paint(f"You: {action_label(state, action)}", Style.CYAN)
+            action_events.append(f"{street_name(state.round_index)}: You {action.value}")
         else:
             draw()
             action = select_bot_action(
@@ -189,11 +257,22 @@ def play_hand(
                 cfr_policy=cfr_policy,
                 greedy=greedy,
             )
-            status = style.paint(f"Bot chose {action.value}.", Style.MAGENTA)
+            status = style.paint(f"Bot: {action_label(state, action)}", Style.MAGENTA)
+            action_events.append(f"{street_name(state.round_index)}: Bot {action.value}")
             if bot_delay > 0:
                 time.sleep(bot_delay)
 
+        previous_round = state.round_index
+        previous_board_len = len(state.board)
         state, rewards, done = game.step(action)
+        if not done and state.round_index != previous_round:
+            if len(state.board) == 3 and previous_board_len < 3:
+                flop = " ".join(card_label(card) for card in state.board[:3])
+                action_events.append(f"Flop dealt: {flop}")
+            elif len(state.board) == 4 and previous_board_len < 4:
+                action_events.append(f"Turn dealt: {card_label(state.board[3])}")
+            elif len(state.board) == 5 and previous_board_len < 5:
+                action_events.append(f"River dealt: {card_label(state.board[4])}")
         if done:
             bankroll_after = bankroll + rewards[0]
             clear_screen(clear_enabled)
@@ -203,7 +282,9 @@ def play_hand(
             bot_cards = f"{card_label(state.player_hands[1][0])} {card_label(state.player_hands[1][1])}"
             print(f"Bot cards:  {style.paint(bot_cards, Style.BOLD, Style.MAGENTA)}")
             print(f"Board:      {style.paint(render_board(state.board), Style.BOLD)}")
-            print(style.paint(f"History: {game.history_label()}", Style.DIM))
+            print(style.paint("Action summary:", Style.BOLD))
+            for event in format_action_log(action_events, max_lines=10):
+                print(style.paint(f"- {event}", Style.DIM))
             print(style.paint("-" * 64, Style.DIM))
             if rewards[0] > 0:
                 print(style.paint(f"You win {rewards[0]} chips", Style.BOLD, Style.GREEN))

@@ -52,6 +52,8 @@ Hold'em actions:
 - `fold` or `f`
 - `q` to quit
 
+`play_holdem.py` also supports numbered choices (`1`, `2`, `3`, ...) matching the on-screen action list.
+
 ## Train an RL Agent (REINFORCE)
 
 ```bash
@@ -116,6 +118,33 @@ If your terminal does not render ANSI nicely:
 
 ```bash
 python3 play_leduc.py --no-color --no-clear
+```
+
+## Benchmark Harness
+
+Run round-robin evaluation across games and agent types (random / CFR / RL):
+
+```bash
+python3 evaluate_agents.py --games kuhn,leduc,holdem --seeds 0,1,2,3,4 --episodes 5000
+```
+
+The script prints:
+- chips/hand
+- 95% confidence interval over seeds
+- bb/100
+- Elo ratings within each game
+
+It also writes a JSON report to `results/benchmark_<timestamp>.json`.
+
+If your policies are in non-default locations, pass explicit paths:
+
+```bash
+python3 evaluate_agents.py \
+  --kuhn-rl-policy /tmp/kuhn_eval_rl.json \
+  --leduc-rl-policy /tmp/leduc_eval_rl.json \
+  --leduc-cfr-policy /tmp/leduc_eval_cfr.json \
+  --holdem-rl-policy /tmp/holdem_eval_rl.json \
+  --holdem-cfr-policy /tmp/holdem_eval_cfr.json
 ```
 
 ## Example
