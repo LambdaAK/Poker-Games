@@ -155,6 +155,22 @@ python3 evaluate_agents.py \
   --holdem-nfsp-policy /tmp/holdem_eval_nfsp.json
 ```
 
+## Hold'em League Pipeline
+
+Train a candidate pool (RL + CFR + NFSP across seeds), run a round-robin, and
+promote the top non-random policy:
+
+```bash
+python3 train_holdem_league.py --seeds 0,1,2 --out-dir models/holdem_league
+```
+
+Outputs:
+- Per-candidate policies in `models/holdem_league/`
+- `models/holdem_league/league_summary.json` with training + benchmark results
+- `models/holdem_league/best_holdem_policy.json` as the promoted checkpoint
+- `models/holdem_league/best_holdem_policy.meta.json` with the correct
+  `play_holdem.py` flag (`--rl-policy`, `--cfr-policy`, or `--nfsp-policy`)
+
 ## Example
 
 ```python
