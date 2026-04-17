@@ -21,6 +21,7 @@ from leduc_poker import rl as leduc_rl
 from holdem_limit import HoldemLimitGame as HoldemGame
 from holdem_limit import abstraction as holdem_abstraction
 from holdem_limit import cfr as holdem_cfr
+from holdem_limit import nfsp as holdem_nfsp
 from holdem_limit import rl as holdem_rl
 
 
@@ -176,6 +177,26 @@ class HoldemCfrAgent(Agent):
         return self._policy.sample_action(key, legal_actions, rng)
 
 
+class HoldemNfspAgent(Agent):
+    def __init__(self, policy: holdem_nfsp.NfspAveragePolicy, greedy: bool) -> None:
+        self._policy = policy
+        self._greedy = greedy
+
+    def choose(
+        self,
+        *,
+        game: HoldemGame,
+        state: Any,
+        legal_actions: tuple[Any, ...],
+        player_index: int,
+        rng: random.Random,
+    ) -> Any:
+        key = holdem_abstraction.info_state_key(state, player_index)
+        if self._greedy:
+            return self._policy.greedy_action(key, legal_actions)
+        return self._policy.sample_action(key, legal_actions, rng)
+
+
 @dataclass
 class GameSpec:
     key: str
@@ -260,6 +281,12 @@ def parse_args() -> argparse.Namespace:
         default="models/holdem_limit_cfr_policy.json",
         help="Hold'em CFR policy JSON path",
     )
+    parser.add_argument(
+        "--holdem-nfsp-policy",
+        type=str,
+        default="models/holdem_limit_nfsp_policy.json",
+        help="Hold'em NFSP policy JSON path",
+    )
     return parser.parse_args()
 
 
@@ -336,6 +363,15 @@ def build_holdem_agents(args: argparse.Namespace, warnings: list[str]) -> dict[s
     )
     if cfr_path is not None:
         agents["cfr"] = HoldemCfrAgent(holdem_cfr.AverageStrategyPolicy.load(cfr_path), args.greedy)
+
+    nfsp_path = _load_or_warn(
+        path_text=args.holdem_nfsp_policy,
+        strict_missing=args.strict_missing,
+        warnings=warnings,
+        label="Hold'em NFSP policy",
+    )
+    if nfsp_path is not None:
+        agents["nfsp"] = HoldemNfspAgent(holdem_nfsp.NfspAveragePolicy.load(nfsp_path), args.greedy)
     return agents
 
 

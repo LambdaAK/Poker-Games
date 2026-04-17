@@ -10,6 +10,7 @@ import time
 from holdem_limit.abstraction import info_state_key
 from holdem_limit.cfr import AverageStrategyPolicy
 from holdem_limit.game import Action, BET_SIZES, HoldemLimitGame, card_label
+from holdem_limit.nfsp import NfspAveragePolicy
 from holdem_limit.rl import TabularSoftmaxPolicy
 
 
@@ -61,6 +62,7 @@ def parse_args() -> argparse.Namespace:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--rl-policy", type=str, default=None, help="Path to RL policy JSON")
     group.add_argument("--cfr-policy", type=str, default=None, help="Path to CFR policy JSON")
+    group.add_argument("--nfsp-policy", type=str, default=None, help="Path to NFSP policy JSON")
     parser.add_argument("--bot-greedy", action="store_true", help="Use greedy bot policy")
     parser.add_argument("--seed", type=int, default=None, help="Random seed")
     parser.add_argument("--no-color", action="store_true", help="Disable ANSI colors")
@@ -169,15 +171,20 @@ def select_bot_action(
     rng: random.Random,
     rl_policy: TabularSoftmaxPolicy | None,
     cfr_policy: AverageStrategyPolicy | None,
+    nfsp_policy: NfspAveragePolicy | None,
     greedy: bool,
 ) -> Action:
-    if rl_policy is None and cfr_policy is None:
+    if rl_policy is None and cfr_policy is None and nfsp_policy is None:
         return rng.choice(list(legal))
     key = info_state_key(state, 1)
     if rl_policy is not None:
         if greedy:
             return rl_policy.greedy_action(key, legal)
         return rl_policy.sample_action(key, legal, rng)
+    if nfsp_policy is not None:
+        if greedy:
+            return nfsp_policy.greedy_action(key, legal)
+        return nfsp_policy.sample_action(key, legal, rng)
     if greedy:
         return cfr_policy.greedy_action(key, legal)
     return cfr_policy.sample_action(key, legal, rng)
@@ -189,6 +196,7 @@ def play_hand(
     rng: random.Random,
     rl_policy: TabularSoftmaxPolicy | None,
     cfr_policy: AverageStrategyPolicy | None,
+    nfsp_policy: NfspAveragePolicy | None,
     greedy: bool,
     style: Style,
     clear_enabled: bool,
@@ -255,6 +263,7 @@ def play_hand(
                 rng=rng,
                 rl_policy=rl_policy,
                 cfr_policy=cfr_policy,
+                nfsp_policy=nfsp_policy,
                 greedy=greedy,
             )
             status = style.paint(f"Bot: {action_label(state, action)}", Style.MAGENTA)
@@ -310,9 +319,12 @@ def main() -> None:
     game = HoldemLimitGame(rng=rng)
     rl_policy = TabularSoftmaxPolicy.load(args.rl_policy) if args.rl_policy else None
     cfr_policy = AverageStrategyPolicy.load(args.cfr_policy) if args.cfr_policy else None
+    nfsp_policy = NfspAveragePolicy.load(args.nfsp_policy) if args.nfsp_policy else None
 
     if rl_policy is not None:
         matchup = "vs RL bot"
+    elif nfsp_policy is not None:
+        matchup = "vs NFSP bot"
     elif cfr_policy is not None:
         matchup = "vs CFR bot"
     else:
@@ -327,6 +339,7 @@ def main() -> None:
                 rng=rng,
                 rl_policy=rl_policy,
                 cfr_policy=cfr_policy,
+                nfsp_policy=nfsp_policy,
                 greedy=args.bot_greedy,
                 style=style,
                 clear_enabled=clear_enabled,

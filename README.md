@@ -101,11 +101,18 @@ Train REINFORCE baseline:
 python3 train_reinforce_holdem.py --episodes 250000 --save models/holdem_limit_reinforce_policy.json
 ```
 
+Train NFSP-style advanced RL baseline:
+
+```bash
+python3 train_nfsp_holdem.py --episodes 350000 --save models/holdem_limit_nfsp_policy.json
+```
+
 Play against trained Hold'em bots:
 
 ```bash
 python3 play_holdem.py --cfr-policy models/holdem_limit_cfr_policy.json
 python3 play_holdem.py --rl-policy models/holdem_limit_reinforce_policy.json
+python3 play_holdem.py --nfsp-policy models/holdem_limit_nfsp_policy.json
 ```
 
 If your terminal does not render ANSI nicely:
@@ -122,7 +129,7 @@ python3 play_leduc.py --no-color --no-clear
 
 ## Benchmark Harness
 
-Run round-robin evaluation across games and agent types (random / CFR / RL):
+Run round-robin evaluation across games and agent types (random / CFR / RL / NFSP for Hold'em):
 
 ```bash
 python3 evaluate_agents.py --games kuhn,leduc,holdem --seeds 0,1,2,3,4 --episodes 5000
@@ -144,7 +151,8 @@ python3 evaluate_agents.py \
   --leduc-rl-policy /tmp/leduc_eval_rl.json \
   --leduc-cfr-policy /tmp/leduc_eval_cfr.json \
   --holdem-rl-policy /tmp/holdem_eval_rl.json \
-  --holdem-cfr-policy /tmp/holdem_eval_cfr.json
+  --holdem-cfr-policy /tmp/holdem_eval_cfr.json \
+  --holdem-nfsp-policy /tmp/holdem_eval_nfsp.json
 ```
 
 ## Example

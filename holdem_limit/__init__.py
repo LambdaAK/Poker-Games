@@ -20,6 +20,11 @@ from .game import (
     step_state,
     terminal_rewards,
 )
+from .nfsp import (
+    NfspAveragePolicy,
+    evaluate_vs_random as evaluate_nfsp_vs_random,
+    train_self_play as train_nfsp_self_play,
+)
 from .rl import TabularSoftmaxPolicy, evaluate_vs_random as evaluate_rl_vs_random, train_self_play
 
 __all__ = [
@@ -42,7 +47,10 @@ __all__ = [
     "terminal_rewards",
     "AverageStrategyPolicy",
     "CFRTrainer",
+    "NfspAveragePolicy",
     "TabularSoftmaxPolicy",
+    "evaluate_nfsp_vs_random",
     "evaluate_rl_vs_random",
+    "train_nfsp_self_play",
     "train_self_play",
 ]
