@@ -4,6 +4,7 @@ Implemented games:
 - Kuhn Poker
 - Leduc Poker (two rounds, board card, fixed-limit betting with one raise per round)
 - Heads-up Limit Texas Hold'em
+- Blackjack
 
 ## Quickstart
 
@@ -53,6 +54,27 @@ Hold'em actions:
 - `q` to quit
 
 `play_holdem.py` also supports numbered choices (`1`, `2`, `3`, ...) matching the on-screen action list.
+
+Play Blackjack:
+
+```bash
+python3 play_blackjack.py
+```
+
+Blackjack actions:
+- `hit` or `h`
+- `stand` or `s`
+- `double` or `d`
+- `q` to quit
+
+Auto-play one of the built-in policies:
+
+```bash
+python3 play_blackjack.py --auto --algorithm basic
+python3 play_blackjack.py --auto --algorithm random
+python3 play_blackjack.py --auto --algorithm mc --policy models/blackjack_mc_policy.json
+python3 play_blackjack.py --auto --algorithm q --policy models/blackjack_q_policy.json
+```
 
 ## Train an RL Agent (REINFORCE)
 
@@ -154,6 +176,31 @@ python3 evaluate_agents.py \
   --holdem-cfr-policy /tmp/holdem_eval_cfr.json \
   --holdem-nfsp-policy /tmp/holdem_eval_nfsp.json
 ```
+
+## Blackjack
+
+Blackjack uses a single-player hand-vs-dealer environment with:
+- one standard 52-card deck
+- dealer stands on soft 17
+- natural blackjack pays 3:2
+- no split, surrender, or insurance
+
+Train a Monte Carlo control policy:
+
+```bash
+python3 train_blackjack.py --algo mc --episodes 200000 --save models/blackjack_mc_policy.json
+```
+
+Train a tabular Q-learning policy:
+
+```bash
+python3 train_blackjack.py --algo q --episodes 200000 --save models/blackjack_q_policy.json
+```
+
+The trainer reports average reward per hand for:
+- the learned policy
+- the built-in basic-strategy heuristic
+- a random policy
 
 ## Hold'em League Pipeline
 
